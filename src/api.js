@@ -36,3 +36,21 @@ export const createSession = (teacherId, studentId, wordBankId) =>
 
 export const joinSession = (inviteToken) =>
   api.post(`/sessions/join/${inviteToken}`);
+
+export const updateStudent = (id, name) =>
+  api.put(`/students/${id}`, { name });
+
+export const deleteStudent = (id) =>
+  api.delete(`/students/${id}`);
+
+export const updateWordBank = (id, name) =>
+  api.put(`/word-banks/${id}`, { name });
+
+export const deleteWordBank = (id) =>
+  api.delete(`/word-banks/${id}`);
+
+export const updateWord = (id, word, translation, hint, notes) =>
+  api.put(`/words/${id}`, { word, translation, hint, notes });
+
+export const deleteWord = (id) =>
+  api.delete(`/words/${id}`);

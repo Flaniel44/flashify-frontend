@@ -4,10 +4,16 @@ import {
   loginTeacher,
   getStudents,
   createStudent,
+  updateStudent,
+  deleteStudent,
   getWordBanks,
   createWordBank,
+  updateWordBank,
+  deleteWordBank,
   getWords,
   createWord,
+  updateWord,
+  deleteWord,
   createSession
 } from '../api';
 
@@ -20,13 +26,20 @@ export default function Dashboard() {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentForm, setStudentForm] = useState({ name: '' });
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [editStudentName, setEditStudentName] = useState('');
 
   const [wordBanks, setWordBanks] = useState([]);
   const [selectedWordBank, setSelectedWordBank] = useState(null);
   const [wordBankForm, setWordBankForm] = useState({ name: '' });
+  const [editingWordBank, setEditingWordBank] = useState(null);
+  const [editWordBankName, setEditWordBankName] = useState('');
 
   const [words, setWords] = useState([]);
   const [wordForm, setWordForm] = useState({ word: '', translation: '', hint: '', notes: '' });
+  const [wordFormError, setWordFormError] = useState(null);
+  const [editingWord, setEditingWord] = useState(null);
+  const [editWordForm, setEditWordForm] = useState({ word: '', translation: '', hint: '', notes: '' });
 
   const [sessionLink, setSessionLink] = useState(null);
 
@@ -98,9 +111,31 @@ export default function Dashboard() {
     setAuthError(null);
   };
 
+  // --- Students ---
   const handleCreateStudent = async () => {
+    if (!studentForm.name.trim()) return;
     await createStudent(teacher.id, studentForm.name);
     setStudentForm({ name: '' });
+    loadStudents(teacher.id);
+  };
+
+  const handleUpdateStudent = async (id) => {
+    if (!editStudentName.trim()) return;
+    await updateStudent(id, editStudentName);
+    setEditingStudent(null);
+    setEditStudentName('');
+    loadStudents(teacher.id);
+  };
+
+  const handleDeleteStudent = async (id) => {
+    if (!window.confirm('Delete this student? This cannot be undone.')) return;
+    await deleteStudent(id);
+    if (selectedStudent?.id === id) {
+      setSelectedStudent(null);
+      setWordBanks([]);
+      setSelectedWordBank(null);
+      setWords([]);
+    }
     loadStudents(teacher.id);
   };
 
@@ -109,22 +144,50 @@ export default function Dashboard() {
     setSelectedWordBank(null);
     setWords([]);
     setSessionLink(null);
+    setEditingWordBank(null);
     loadWordBanks(student.id);
   };
 
+  // --- Word Banks ---
   const handleCreateWordBank = async () => {
+    if (!wordBankForm.name.trim()) return;
     await createWordBank(selectedStudent.id, wordBankForm.name);
     setWordBankForm({ name: '' });
+    loadWordBanks(selectedStudent.id);
+  };
+
+  const handleUpdateWordBank = async (id) => {
+    if (!editWordBankName.trim()) return;
+    await updateWordBank(id, editWordBankName);
+    setEditingWordBank(null);
+    setEditWordBankName('');
+    loadWordBanks(selectedStudent.id);
+  };
+
+  const handleDeleteWordBank = async (id) => {
+    if (!window.confirm('Delete this word bank? This cannot be undone.')) return;
+    await deleteWordBank(id);
+    if (selectedWordBank?.id === id) {
+      setSelectedWordBank(null);
+      setWords([]);
+    }
     loadWordBanks(selectedStudent.id);
   };
 
   const handleSelectWordBank = (wordBank) => {
     setSelectedWordBank(wordBank);
     setSessionLink(null);
+    setEditingWord(null);
     loadWords(wordBank.id);
   };
 
+  // --- Words ---
   const handleCreateWord = async () => {
+    if (!wordForm.word.trim()) {
+      setWordFormError('Word cannot be empty');
+      return;
+    }
+    setWordFormError(null);
     await createWord(
       selectedWordBank.id,
       wordForm.word,
@@ -133,6 +196,20 @@ export default function Dashboard() {
       wordForm.notes
     );
     setWordForm({ word: '', translation: '', hint: '', notes: '' });
+    loadWords(selectedWordBank.id);
+  };
+
+  const handleUpdateWord = async (id) => {
+    if (!editWordForm.word.trim()) return;
+    await updateWord(id, editWordForm.word, editWordForm.translation, editWordForm.hint, editWordForm.notes);
+    setEditingWord(null);
+    setEditWordForm({ word: '', translation: '', hint: '', notes: '' });
+    loadWords(selectedWordBank.id);
+  };
+
+  const handleDeleteWord = async (id) => {
+    if (!window.confirm('Delete this word?')) return;
+    await deleteWord(id);
     loadWords(selectedWordBank.id);
   };
 
@@ -147,8 +224,6 @@ export default function Dashboard() {
     return (
       <div style={styles.container}>
         <h1>Flashify 🇬🇧</h1>
-
-        {/* Toggle */}
         <div style={styles.toggleRow}>
           <button
             style={{ ...styles.toggleButton, background: authMode === 'login' ? '#2563eb' : '#e5e7eb', color: authMode === 'login' ? 'white' : '#374151' }}
@@ -164,7 +239,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Login form */}
         {authMode === 'login' && (
           <div style={styles.authForm}>
             <input
@@ -185,7 +259,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Register form */}
         {authMode === 'register' && (
           <div style={styles.authForm}>
             <input
@@ -253,9 +326,26 @@ export default function Dashboard() {
                 ...styles.listItem,
                 background: selectedStudent?.id === s.id ? '#dbeafe' : '#f9fafb'
               }}
-              onClick={() => handleSelectStudent(s)}
             >
-              {s.name}
+              {editingStudent === s.id ? (
+                <div style={styles.inlineEditRow}>
+                  <input
+                    style={styles.input}
+                    value={editStudentName}
+                    onChange={e => setEditStudentName(e.target.value)}
+                  />
+                  <button style={styles.saveButton} onClick={() => handleUpdateStudent(s.id)}>Save</button>
+                  <button style={styles.cancelButton} onClick={() => setEditingStudent(null)}>Cancel</button>
+                </div>
+              ) : (
+                <div style={styles.itemRow}>
+                  <span onClick={() => handleSelectStudent(s)} style={styles.itemLabel}>{s.name}</span>
+                  <div style={styles.itemActions}>
+                    <button style={styles.editButton} onClick={() => { setEditingStudent(s.id); setEditStudentName(s.name); }}>Edit</button>
+                    <button style={styles.deleteButton} onClick={() => handleDeleteStudent(s.id)}>Delete</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -282,9 +372,26 @@ export default function Dashboard() {
                   ...styles.listItem,
                   background: selectedWordBank?.id === wb.id ? '#dbeafe' : '#f9fafb'
                 }}
-                onClick={() => handleSelectWordBank(wb)}
               >
-                {wb.name}
+                {editingWordBank === wb.id ? (
+                  <div style={styles.inlineEditRow}>
+                    <input
+                      style={styles.input}
+                      value={editWordBankName}
+                      onChange={e => setEditWordBankName(e.target.value)}
+                    />
+                    <button style={styles.saveButton} onClick={() => handleUpdateWordBank(wb.id)}>Save</button>
+                    <button style={styles.cancelButton} onClick={() => setEditingWordBank(null)}>Cancel</button>
+                  </div>
+                ) : (
+                  <div style={styles.itemRow}>
+                    <span onClick={() => handleSelectWordBank(wb)} style={styles.itemLabel}>{wb.name}</span>
+                    <div style={styles.itemActions}>
+                      <button style={styles.editButton} onClick={() => { setEditingWordBank(wb.id); setEditWordBankName(wb.name); }}>Edit</button>
+                      <button style={styles.deleteButton} onClick={() => handleDeleteWordBank(wb.id)}>Delete</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -298,7 +405,7 @@ export default function Dashboard() {
           <div style={styles.row}>
             <input
               style={styles.input}
-              placeholder="Word"
+              placeholder="Word *"
               value={wordForm.word}
               onChange={e => setWordForm({ ...wordForm, word: e.target.value })}
             />
@@ -322,12 +429,68 @@ export default function Dashboard() {
             />
             <button style={styles.button} onClick={handleCreateWord}>Add Word</button>
           </div>
+          {wordFormError && <div style={styles.errorText}>{wordFormError}</div>}
+
           <div style={styles.list}>
             {words.map(w => (
               <div key={w.id} style={styles.listItem}>
-                <strong>{w.word}</strong>
-                {w.translation && ` — ${w.translation}`}
-                {w.hint && <em> (hint: {w.hint})</em>}
+                {editingWord === w.id ? (
+                  <div style={styles.editWordForm}>
+                    <input
+                      style={styles.input}
+                      placeholder="Word *"
+                      value={editWordForm.word}
+                      onChange={e => setEditWordForm({ ...editWordForm, word: e.target.value })}
+                    />
+                    <input
+                      style={styles.input}
+                      placeholder="Translation"
+                      value={editWordForm.translation}
+                      onChange={e => setEditWordForm({ ...editWordForm, translation: e.target.value })}
+                    />
+                    <input
+                      style={styles.input}
+                      placeholder="Hint"
+                      value={editWordForm.hint}
+                      onChange={e => setEditWordForm({ ...editWordForm, hint: e.target.value })}
+                    />
+                    <input
+                      style={styles.input}
+                      placeholder="Notes"
+                      value={editWordForm.notes}
+                      onChange={e => setEditWordForm({ ...editWordForm, notes: e.target.value })}
+                    />
+                    <div style={styles.inlineEditRow}>
+                      <button style={styles.saveButton} onClick={() => handleUpdateWord(w.id)}>Save</button>
+                      <button style={styles.cancelButton} onClick={() => setEditingWord(null)}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={styles.itemRow}>
+                    <span style={styles.itemLabel}>
+                      <strong>{w.word}</strong>
+                      {w.translation && ` — ${w.translation}`}
+                      {w.hint && <em> (hint: {w.hint})</em>}
+                    </span>
+                    <div style={styles.itemActions}>
+                      <button
+                        style={styles.editButton}
+                        onClick={() => {
+                          setEditingWord(w.id);
+                          setEditWordForm({
+                            word: w.word,
+                            translation: w.translation || '',
+                            hint: w.hint || '',
+                            notes: w.notes || ''
+                          });
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button style={styles.deleteButton} onClick={() => handleDeleteWord(w.id)}>Delete</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -365,7 +528,16 @@ const styles = {
   input: { padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14 },
   button: { padding: '8px 16px', borderRadius: 6, background: '#2563eb', color: 'white', border: 'none', cursor: 'pointer', fontSize: 14 },
   list: { display: 'flex', flexDirection: 'column', gap: 8 },
-  listItem: { padding: '10px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 14 },
+  listItem: { padding: '10px 14px', borderRadius: 6, fontSize: 14, background: '#f9fafb' },
+  itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  itemLabel: { cursor: 'pointer', flex: 1 },
+  itemActions: { display: 'flex', gap: 6 },
+  editButton: { padding: '4px 10px', borderRadius: 4, background: '#f3f4f6', border: '1px solid #d1d5db', cursor: 'pointer', fontSize: 12, color: '#374151' },
+  deleteButton: { padding: '4px 10px', borderRadius: 4, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', fontSize: 12, color: '#dc2626' },
+  saveButton: { padding: '4px 10px', borderRadius: 4, background: '#dcfce7', border: '1px solid #86efac', cursor: 'pointer', fontSize: 12, color: '#16a34a' },
+  cancelButton: { padding: '4px 10px', borderRadius: 4, background: '#f3f4f6', border: '1px solid #d1d5db', cursor: 'pointer', fontSize: 12, color: '#374151' },
+  inlineEditRow: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' },
+  editWordForm: { display: 'flex', flexDirection: 'column', gap: 8 },
   sessionLink: { marginTop: 16, padding: 16, background: '#f0fdf4', borderRadius: 8, border: '1px solid #86efac' },
-  errorText: { color: '#dc2626', fontSize: 14 }
+  errorText: { color: '#dc2626', fontSize: 14, marginBottom: 8 }
 };
