@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { joinSession, getWords } from '../api';
+import { joinSession, getWords, createWord } from '../api';
 
 export default function SessionPage() {
   const { inviteToken } = useParams();
@@ -88,13 +88,11 @@ export default function SessionPage() {
 
   if (session.status === 'completed') {
     return (
-      <div style={styles.container}>
-        <div style={styles.completedBox}>
-          <h1>🎉 Session Complete!</h1>
-          <p>All words have been revealed.</p>
-          <p style={styles.subtext}>Great work!</p>
-        </div>
-      </div>
+      <CompletedScreen
+        session={session}
+        isTeacher={isTeacher}
+        words={words}
+      />
     );
   }
 
@@ -319,5 +317,167 @@ const styles = {
     borderRadius: 16,
     border: '1px solid #86efac'
   },
-  subtext: { color: '#6b7280', fontSize: 16 }
+  subtext: { color: '#6b7280', fontSize: 16 },
+
+  dashboardButton: {
+  marginTop: 16,
+  padding: '10px 20px',
+  background: '#2563eb',
+  color: 'white',
+  border: 'none',
+  borderRadius: 8,
+  fontSize: 15,
+  cursor: 'pointer'
+},
+addWordBox: {
+  width: '100%',
+  marginTop: 32,
+  padding: 24,
+  background: 'white',
+  borderRadius: 16,
+  boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
+},
+addWordForm: {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  marginTop: 16
+},
+input: {
+  padding: '8px 12px',
+  borderRadius: 6,
+  border: '1px solid #d1d5db',
+  fontSize: 14
+},
+successMessage: {
+  padding: '8px 12px',
+  background: '#f0fdf4',
+  borderRadius: 6,
+  color: '#16a34a',
+  fontSize: 14,
+  textAlign: 'center'
+},
+addedWordsList: {
+  marginTop: 24,
+  borderTop: '1px solid #e5e7eb',
+  paddingTop: 16
+},
+addedWordItem: {
+  padding: '8px 0',
+  fontSize: 14,
+  borderBottom: '1px solid #f3f4f6'
+}
 };
+
+function CompletedScreen({ session, isTeacher, words }) {
+  const [wordForm, setWordForm] = useState({
+    word: '', translation: '', hint: '', notes: ''
+  });
+  const [addedWords, setAddedWords] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleAddWord = async () => {
+    if (!wordForm.word.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await createWord(
+        session.wordBank.id,
+        wordForm.word,
+        wordForm.translation,
+        wordForm.hint,
+        wordForm.notes
+      );
+      setAddedWords([...addedWords, res.data]);
+      setWordForm({ word: '', translation: '', hint: '', notes: '' });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to add word', err);
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.completedBox}>
+        <h1>🎉 Session Complete!</h1>
+        <p>All {words.length} words have been revealed.</p>
+        <p style={styles.subtext}>Great work!</p>
+
+        {isTeacher && (
+          <button
+            style={styles.dashboardButton}
+            onClick={() => window.location.href = '/'}
+          >
+            ← Back to Dashboard
+          </button>
+        )}
+      </div>
+
+      {/* Add words form */}
+      <div style={styles.addWordBox}>
+        <h2>➕ Add Words to Word Bank</h2>
+        <p style={styles.subtext}>
+          Add new words to <strong>{session.wordBank.name}</strong> for next time
+        </p>
+
+        <div style={styles.addWordForm}>
+          <input
+            style={styles.input}
+            placeholder="Word *"
+            value={wordForm.word}
+            onChange={e => setWordForm({ ...wordForm, word: e.target.value })}
+          />
+          <input
+            style={styles.input}
+            placeholder="Translation"
+            value={wordForm.translation}
+            onChange={e => setWordForm({ ...wordForm, translation: e.target.value })}
+          />
+          <input
+            style={styles.input}
+            placeholder="Hint"
+            value={wordForm.hint}
+            onChange={e => setWordForm({ ...wordForm, hint: e.target.value })}
+          />
+          <input
+            style={styles.input}
+            placeholder="Notes"
+            value={wordForm.notes}
+            onChange={e => setWordForm({ ...wordForm, notes: e.target.value })}
+          />
+          <button
+            style={{
+              ...styles.revealButton,
+              opacity: submitting ? 0.6 : 1,
+              cursor: submitting ? 'not-allowed' : 'pointer'
+            }}
+            onClick={handleAddWord}
+            disabled={submitting}
+          >
+            {submitting ? 'Adding...' : 'Add Word'}
+          </button>
+
+          {success && (
+            <div style={styles.successMessage}>✅ Word added!</div>
+          )}
+        </div>
+
+        {/* List of newly added words */}
+        {addedWords.length > 0 && (
+          <div style={styles.addedWordsList}>
+            <h3>Added this session:</h3>
+            {addedWords.map(w => (
+              <div key={w.id} style={styles.addedWordItem}>
+                <strong>{w.word}</strong>
+                {w.translation && ` — ${w.translation}`}
+                {w.hint && <em> (hint: {w.hint})</em>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
