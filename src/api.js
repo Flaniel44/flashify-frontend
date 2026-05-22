@@ -55,8 +55,8 @@ export const updateWord = (id, word, translation, hint, notes) =>
 export const deleteWord = (id) =>
   api.delete(`/words/${id}`);
 
-export const getAllWordBanks = () =>
-  api.get('/word-banks');
+export const getWordBanksByTeacher = (teacherId) =>
+  api.get(`/word-banks/teacher/${teacherId}`);
 
 export const associateWordBank = (wordBankId, studentId) =>
   api.post(`/word-banks/${wordBankId}/associate/${studentId}`);

@@ -6,7 +6,7 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
-  getAllWordBanks,
+  getWordBanksByTeacher,
   getWordBanks,
   createWordBank,
   updateWordBank,
@@ -54,7 +54,7 @@ export default function Dashboard() {
       const parsed = JSON.parse(saved);
       setTeacher(parsed);
       loadStudents(parsed.id);
-      loadAllWordBanks();
+      loadAllWordBanks(parsed.id);
     }
   }, []);
 
@@ -63,8 +63,8 @@ export default function Dashboard() {
     setStudents(res.data);
   };
 
-  const loadAllWordBanks = async () => {
-    const res = await getAllWordBanks();
+  const loadAllWordBanks = async (teacherId) => {
+    const res = await getWordBanksByTeacher(teacherId);
     setAllWordBanks(res.data);
   };
 
@@ -86,7 +86,7 @@ export default function Dashboard() {
       setTeacher(t);
       localStorage.setItem('teacher', JSON.stringify(t));
       loadStudents(t.id);
-      loadAllWordBanks();
+      loadAllWordBanks(t.id);
     } catch (err) {
       setAuthError(err.response?.data || 'Login failed');
     }
@@ -105,7 +105,7 @@ export default function Dashboard() {
       setTeacher(t);
       localStorage.setItem('teacher', JSON.stringify(t));
       loadStudents(t.id);
-      loadAllWordBanks();
+      loadAllWordBanks(t.id);
     } catch (err) {
       setAuthError(err.response?.data || 'Registration failed');
     }
@@ -168,7 +168,7 @@ export default function Dashboard() {
     await createWordBank(selectedStudent.id, wordBankForm.name);
     setWordBankForm({ name: '' });
     loadWordBanks(selectedStudent.id);
-    loadAllWordBanks();
+    loadAllWordBanks(teacher.id);
   };
 
   const handleUpdateWordBank = async (id) => {
@@ -177,7 +177,7 @@ export default function Dashboard() {
     setEditingWordBank(null);
     setEditWordBankName('');
     loadWordBanks(selectedStudent.id);
-    loadAllWordBanks();
+    loadAllWordBanks(teacher.id);
   };
 
   const handleDeleteWordBank = async (id) => {
@@ -188,13 +188,13 @@ export default function Dashboard() {
       setWords([]);
     }
     loadWordBanks(selectedStudent.id);
-    loadAllWordBanks();
+    loadAllWordBanks(teacher.id);
   };
 
   const handleAssociateWordBank = async (wordBankId) => {
     await associateWordBank(wordBankId, selectedStudent.id);
     loadWordBanks(selectedStudent.id);
-    loadAllWordBanks();
+    loadAllWordBanks(teacher.id);
   };
 
   const handleUnassociateWordBank = async (wordBankId, studentId) => {
@@ -204,13 +204,13 @@ export default function Dashboard() {
       setWords([]);
     }
     loadWordBanks(selectedStudent.id);
-    loadAllWordBanks();
+    loadAllWordBanks(teacher.id);
   };
 
   const handleDuplicateWordBank = async (wordBankId) => {
     await duplicateWordBank(wordBankId);
     loadWordBanks(selectedStudent.id);
-    loadAllWordBanks();
+    loadAllWordBanks(teacher.id);
   };
 
   const handleSelectWordBank = (wordBank) => {
@@ -258,7 +258,6 @@ export default function Dashboard() {
     setSessionLink(`${window.location.origin}/session/${token}`);
   };
 
-  // Check if a word bank is already associated with selected student
   const isAssociated = (wordBankId) => {
     return wordBanks.some(wb => wb.id === wordBankId);
   };
@@ -375,7 +374,6 @@ export default function Dashboard() {
                             <button style={styles.deleteButton} onClick={() => handleDeleteWordBank(wb.id)}>Delete</button>
                           </div>
                         </div>
-                        {/* Other associated students */}
                         <div style={styles.associatedStudents}>
                           {wb.students
                             .filter(s => s.id !== selectedStudent.id)
