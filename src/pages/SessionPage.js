@@ -32,7 +32,7 @@ export default function SessionPage() {
         setWords(wordsRes.data);
 
         const client = new Client({
-          webSocketFactory: () => new SockJS('http://192.168.1.45:8080/ws'),
+          webSocketFactory: () => new SockJS('http://192.168.0.165:8080/ws'),
           onConnect: () => {
             setConnected(true);
             client.subscribe(`/topic/session/${sessionData.id}`, (message) => {
@@ -131,24 +131,22 @@ export default function SessionPage() {
               <div style={styles.hiddenWord}>🙈 Waiting for word...</div>
             )}
 
-            {/* Translation — always visible */}
-            {currentWord.translation && (
-              <div style={styles.translation}>{currentWord.translation}</div>
+            {/* Translation — visible to both only after word is revealed */}
+            {currentWord.translation && (isMyTurn || session.wordRevealed) && (
+                <div style={styles.translation}>{currentWord.translation}</div>
             )}
 
             {/* Hint — visible to both when revealed */}
             {currentWord.hint && (
-              <div style={styles.hintSection}>
+            <div style={styles.hintSection}>
                 {session.hintRevealed ? (
-                  <div style={styles.hintText}>💡 {currentWord.hint}</div>
+                <div style={styles.hintText}>💡 {currentWord.hint}</div>
                 ) : (
-                  isMyTurn && !session.wordRevealed && (
-                    <button style={styles.hintButton} onClick={handleRevealHint}>
-                      Show Hint to Both
-                    </button>
-                  )
+                <button style={styles.hintButton} onClick={handleRevealHint}>
+                    Show Hint
+                </button>
                 )}
-              </div>
+            </div>
             )}
           </>
         ) : (
