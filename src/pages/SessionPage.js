@@ -21,6 +21,8 @@ export default function SessionPage() {
   const currentWord = session ? words[session.currentWordIndex] : null;
   const isMyTurn = session && session.currentTurn === myRole;
 
+  const [emptyWordBank, setEmptyWordBank] = useState(false);
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -30,6 +32,11 @@ export default function SessionPage() {
 
         const wordsRes = await getWords(sessionData.wordBank.id);
         setWords(wordsRes.data);
+
+        if (wordsRes.data.length === 0) {
+            setEmptyWordBank(true);
+        return;
+}
 
         const client = new Client({
           webSocketFactory: () => new SockJS('http://192.168.0.165:8080/ws'),
@@ -82,6 +89,17 @@ export default function SessionPage() {
       </div>
     );
   }
+
+  if (emptyWordBank) {
+  return (
+    <CompletedScreen
+      session={session || { wordBank: { id: null, name: 'Word Bank' } }}
+      isTeacher={isTeacher}
+      words={[]}
+      emptyBank={true}
+    />
+  );
+}
 
   if (!session || !connected) {
     return (
@@ -401,7 +419,7 @@ endButton: {
 },
 };
 
-function CompletedScreen({ session, isTeacher, words }) {
+function CompletedScreen({ session, isTeacher, words, emptyBank }) {
   const [wordForm, setWordForm] = useState({
     word: '', translation: '', hint: '', notes: ''
   });
@@ -432,10 +450,21 @@ function CompletedScreen({ session, isTeacher, words }) {
 
   return (
     <div style={styles.container}>
+
+      {/* Header */}
       <div style={styles.completedBox}>
-        <h1>🎉 Session Complete!</h1>
-        <p>All {words.length} words have been revealed.</p>
-        <p style={styles.subtext}>Great work!</p>
+        {emptyBank ? (
+          <>
+            <h1>⚠️ No Words Found</h1>
+            <p>This word bank is empty. Add some words below before starting a session!</p>
+          </>
+        ) : (
+          <>
+            <h1>🎉 Session Complete!</h1>
+            <p>All {words.length} words have been revealed.</p>
+            <p style={styles.subtext}>Great work!</p>
+          </>
+        )}
 
         {isTeacher && (
           <button
