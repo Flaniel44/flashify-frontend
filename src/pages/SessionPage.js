@@ -69,6 +69,11 @@ export default function SessionPage() {
   const handleRevealWord = () => sendMessage('reveal', { revealedBy: myRole });
   const handleRevealHint = () => sendMessage('hint');
   const handleNextWord = () => sendMessage('next', { currentTurn: session.currentTurn });
+  const handleEndSession = () => {
+  if (window.confirm('End this session early?')) {
+    sendMessage('end');
+  }
+};
 
   if (error) {
     return (
@@ -152,6 +157,8 @@ export default function SessionPage() {
         )}
       </div>
 
+      
+
       {/* Turn indicator */}
       <div style={{
         ...styles.turnIndicator,
@@ -178,7 +185,20 @@ export default function SessionPage() {
         </div>
       )}
 
+      <div style={styles.buttonGroup}>
+        {/* End session button */}
+        <button
+        style={styles.endButton}
+        onClick={handleEndSession}
+        >
+        End Session Early
+        </button>
+
+      </div>
+      
+
     </div>
+    
   );
 }
 
@@ -366,7 +386,19 @@ addedWordItem: {
   padding: '8px 0',
   fontSize: 14,
   borderBottom: '1px solid #f3f4f6'
-}
+},
+
+endButton: {
+  width: '100%',
+  padding: '10px',
+  background: '#fef2f2',
+  color: '#dc2626',
+  border: '1px solid #fecaca',
+  borderRadius: 8,
+  fontSize: 14,
+  cursor: 'pointer',
+  marginTop: 12
+},
 };
 
 function CompletedScreen({ session, isTeacher, words }) {
