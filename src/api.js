@@ -7,14 +7,17 @@ const api = axios.create({
   }
 });
 
-export const createTeacher = (name, email) =>
-  api.post('/teachers', { name, email });
+export const registerTeacher = (name, username, password, registrationCode) =>
+  api.post('/teachers/register', { name, username, password, registrationCode });
+
+export const loginTeacher = (username, password) =>
+  api.post('/teachers/login', { username, password });
 
 export const getStudents = (teacherId) =>
   api.get(`/students/teacher/${teacherId}`);
 
-export const createStudent = (teacherId, name, email) =>
-  api.post('/students', { teacherId, name, email });
+export const createStudent = (teacherId, name) =>
+  api.post('/students', { teacherId, name });
 
 export const getWordBanks = (studentId) =>
   api.get(`/word-banks/student/${studentId}`);

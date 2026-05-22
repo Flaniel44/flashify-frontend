@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  createTeacher,
+  registerTeacher,
+  loginTeacher,
   getStudents,
   createStudent,
   getWordBanks,
@@ -12,11 +13,13 @@ import {
 
 export default function Dashboard() {
   const [teacher, setTeacher] = useState(null);
-  const [teacherForm, setTeacherForm] = useState({ name: '', email: '' });
+  const [authMode, setAuthMode] = useState('login');
+  const [authForm, setAuthForm] = useState({ name: '', username: '', password: '', registrationCode: '' });
+  const [authError, setAuthError] = useState(null);
 
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [studentForm, setStudentForm] = useState({ name: '', email: '' });
+  const [studentForm, setStudentForm] = useState({ name: '' });
 
   const [wordBanks, setWordBanks] = useState([]);
   const [selectedWordBank, setSelectedWordBank] = useState(null);
@@ -27,7 +30,6 @@ export default function Dashboard() {
 
   const [sessionLink, setSessionLink] = useState(null);
 
-  // Load teacher from localStorage on startup
   useEffect(() => {
     const saved = localStorage.getItem('teacher');
     if (saved) {
@@ -52,17 +54,53 @@ export default function Dashboard() {
     setWords(res.data);
   };
 
-  const handleCreateTeacher = async () => {
-    const res = await createTeacher(teacherForm.name, teacherForm.email);
-    const t = res.data;
-    setTeacher(t);
-    localStorage.setItem('teacher', JSON.stringify(t));
-    loadStudents(t.id);
+  const handleLogin = async () => {
+    setAuthError(null);
+    try {
+      const res = await loginTeacher(authForm.username, authForm.password);
+      const t = res.data;
+      setTeacher(t);
+      localStorage.setItem('teacher', JSON.stringify(t));
+      loadStudents(t.id);
+    } catch (err) {
+      setAuthError(err.response?.data || 'Login failed');
+    }
+  };
+
+  const handleRegister = async () => {
+    setAuthError(null);
+    try {
+      const res = await registerTeacher(
+        authForm.name,
+        authForm.username,
+        authForm.password,
+        authForm.registrationCode
+      );
+      const t = res.data;
+      setTeacher(t);
+      localStorage.setItem('teacher', JSON.stringify(t));
+      loadStudents(t.id);
+    } catch (err) {
+      setAuthError(err.response?.data || 'Registration failed');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('teacher');
+    setTeacher(null);
+    setStudents([]);
+    setSelectedStudent(null);
+    setWordBanks([]);
+    setSelectedWordBank(null);
+    setWords([]);
+    setSessionLink(null);
+    setAuthForm({ name: '', username: '', password: '', registrationCode: '' });
+    setAuthError(null);
   };
 
   const handleCreateStudent = async () => {
-    await createStudent(teacher.id, studentForm.name, studentForm.email);
-    setStudentForm({ name: '', email: '' });
+    await createStudent(teacher.id, studentForm.name);
+    setStudentForm({ name: '' });
     loadStudents(teacher.id);
   };
 
@@ -104,32 +142,96 @@ export default function Dashboard() {
     setSessionLink(`${window.location.origin}/session/${token}`);
   };
 
+  // Auth screen
   if (!teacher) {
     return (
       <div style={styles.container}>
-        <h1>Welcome to Flashify 👋</h1>
-        <h2>Create your teacher account</h2>
-        <input
-          style={styles.input}
-          placeholder="Your name"
-          value={teacherForm.name}
-          onChange={e => setTeacherForm({ ...teacherForm, name: e.target.value })}
-        />
-        <input
-          style={styles.input}
-          placeholder="Your email"
-          value={teacherForm.email}
-          onChange={e => setTeacherForm({ ...teacherForm, email: e.target.value })}
-        />
-        <button style={styles.button} onClick={handleCreateTeacher}>Get Started</button>
+        <h1>Flashify 🇬🇧</h1>
+
+        {/* Toggle */}
+        <div style={styles.toggleRow}>
+          <button
+            style={{ ...styles.toggleButton, background: authMode === 'login' ? '#2563eb' : '#e5e7eb', color: authMode === 'login' ? 'white' : '#374151' }}
+            onClick={() => { setAuthMode('login'); setAuthError(null); }}
+          >
+            Login
+          </button>
+          <button
+            style={{ ...styles.toggleButton, background: authMode === 'register' ? '#2563eb' : '#e5e7eb', color: authMode === 'register' ? 'white' : '#374151' }}
+            onClick={() => { setAuthMode('register'); setAuthError(null); }}
+          >
+            Register
+          </button>
+        </div>
+
+        {/* Login form */}
+        {authMode === 'login' && (
+          <div style={styles.authForm}>
+            <input
+              style={styles.input}
+              placeholder="Username"
+              value={authForm.username}
+              onChange={e => setAuthForm({ ...authForm, username: e.target.value })}
+            />
+            <input
+              style={styles.input}
+              placeholder="Password"
+              type="password"
+              value={authForm.password}
+              onChange={e => setAuthForm({ ...authForm, password: e.target.value })}
+            />
+            {authError && <div style={styles.errorText}>{authError}</div>}
+            <button style={styles.button} onClick={handleLogin}>Login</button>
+          </div>
+        )}
+
+        {/* Register form */}
+        {authMode === 'register' && (
+          <div style={styles.authForm}>
+            <input
+              style={styles.input}
+              placeholder="Your name"
+              value={authForm.name}
+              onChange={e => setAuthForm({ ...authForm, name: e.target.value })}
+            />
+            <input
+              style={styles.input}
+              placeholder="Username"
+              value={authForm.username}
+              onChange={e => setAuthForm({ ...authForm, username: e.target.value })}
+            />
+            <input
+              style={styles.input}
+              placeholder="Password"
+              type="password"
+              value={authForm.password}
+              onChange={e => setAuthForm({ ...authForm, password: e.target.value })}
+            />
+            <input
+              style={styles.input}
+              placeholder="Registration code"
+              type="password"
+              value={authForm.registrationCode}
+              onChange={e => setAuthForm({ ...authForm, registrationCode: e.target.value })}
+            />
+            {authError && <div style={styles.errorText}>{authError}</div>}
+            <button style={styles.button} onClick={handleRegister}>Register</button>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div style={styles.container}>
-      <h1>Flashify Dashboard 👩‍🏫</h1>
-      <p>Welcome back, {teacher.name}!</p>
+      {/* Header */}
+      <div style={styles.header}>
+        <h1 style={{ margin: 0 }}>Flashify 🇬🇧</h1>
+        <div style={styles.headerRight}>
+          <span style={styles.welcomeText}>👋 {teacher.name}</span>
+          <button style={styles.logoutButton} onClick={handleLogout}>Logout</button>
+        </div>
+      </div>
 
       {/* Students */}
       <section style={styles.section}>
@@ -139,13 +241,7 @@ export default function Dashboard() {
             style={styles.input}
             placeholder="Student name"
             value={studentForm.name}
-            onChange={e => setStudentForm({ ...studentForm, name: e.target.value })}
-          />
-          <input
-            style={styles.input}
-            placeholder="Student email"
-            value={studentForm.email}
-            onChange={e => setStudentForm({ ...studentForm, email: e.target.value })}
+            onChange={e => setStudentForm({ name: e.target.value })}
           />
           <button style={styles.button} onClick={handleCreateStudent}>Add Student</button>
         </div>
@@ -236,8 +332,10 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Start Session */}
-          <button style={{ ...styles.button, marginTop: 24, background: '#16a34a' }} onClick={handleCreateSession}>
+          <button
+            style={{ ...styles.button, marginTop: 24, background: '#16a34a' }}
+            onClick={handleCreateSession}
+          >
             Start Session with {selectedStudent.name}
           </button>
 
@@ -255,11 +353,19 @@ export default function Dashboard() {
 
 const styles = {
   container: { maxWidth: 800, margin: '0 auto', padding: 32, fontFamily: 'sans-serif' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 12 },
+  welcomeText: { fontSize: 14, color: '#6b7280' },
+  logoutButton: { padding: '6px 14px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #d1d5db', cursor: 'pointer', fontSize: 14, color: '#374151' },
+  toggleRow: { display: 'flex', gap: 8, marginBottom: 24 },
+  toggleButton: { padding: '8px 24px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 14 },
+  authForm: { display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320 },
   section: { marginTop: 32, borderTop: '1px solid #e5e7eb', paddingTop: 24 },
   row: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 },
   input: { padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14 },
   button: { padding: '8px 16px', borderRadius: 6, background: '#2563eb', color: 'white', border: 'none', cursor: 'pointer', fontSize: 14 },
   list: { display: 'flex', flexDirection: 'column', gap: 8 },
   listItem: { padding: '10px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 14 },
-  sessionLink: { marginTop: 16, padding: 16, background: '#f0fdf4', borderRadius: 8, border: '1px solid #86efac' }
+  sessionLink: { marginTop: 16, padding: 16, background: '#f0fdf4', borderRadius: 8, border: '1px solid #86efac' },
+  errorText: { color: '#dc2626', fontSize: 14 }
 };
