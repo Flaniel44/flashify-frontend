@@ -54,3 +54,15 @@ export const updateWord = (id, word, translation, hint, notes) =>
 
 export const deleteWord = (id) =>
   api.delete(`/words/${id}`);
+
+export const getAllWordBanks = () =>
+  api.get('/word-banks');
+
+export const associateWordBank = (wordBankId, studentId) =>
+  api.post(`/word-banks/${wordBankId}/associate/${studentId}`);
+
+export const unassociateWordBank = (wordBankId, studentId) =>
+  api.delete(`/word-banks/${wordBankId}/unassociate/${studentId}`);
+
+export const duplicateWordBank = (wordBankId) =>
+  api.post(`/word-banks/${wordBankId}/duplicate`);
