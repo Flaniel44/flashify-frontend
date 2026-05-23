@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { joinSession, getWords, createWord } from '../api';
+import { joinSession, getSessionWords, createWord } from '../api';
 
 export default function SessionPage() {
   const { inviteToken } = useParams();
@@ -19,44 +19,50 @@ export default function SessionPage() {
   const myRole = isTeacher ? 'teacher' : 'student';
 
   const currentWord = session ? words[session.currentWordIndex] : null;
-  const isMyTurn = session && session.currentTurn === myRole;
+  const isMyTurn = session && (
+    session.sessionType === 'teacher_only' ? isTeacher :
+    session.sessionType === 'student_only' ? !isTeacher :
+    session.currentTurn === myRole
+  );
 
   const [emptyWordBank, setEmptyWordBank] = useState(false);
 
   useEffect(() => {
     const init = async () => {
-      try {
-        const res = await joinSession(inviteToken);
-        const sessionData = res.data;
-        setSession(sessionData);
+  try {
+    const res = await joinSession(inviteToken);
+    const sessionData = res.data;
+    setSession(sessionData);
 
-        const wordsRes = await getWords(sessionData.wordBank.id);
-        setWords(wordsRes.data);
+    // Use session word order instead of raw word bank words
+    const wordsRes = await getSessionWords(sessionData.id);
+    setWords(wordsRes.data);
 
-        if (wordsRes.data.length === 0) {
-            setEmptyWordBank(true);
-        return;
-}
+    if (wordsRes.data.length === 0) {
+      setEmptyWordBank(true);
+      return;
+    }
 
-        const client = new Client({
-          webSocketFactory: () => new SockJS('http://192.168.0.165:8080/ws'),
-          onConnect: () => {
-            setConnected(true);
-            client.subscribe(`/topic/session/${sessionData.id}`, (message) => {
-              const updatedSession = JSON.parse(message.body);
-              setSession(updatedSession);
-            });
-          },
-          onDisconnect: () => setConnected(false),
-          onStompError: () => setError('Connection error. Please refresh.')
+    const client = new Client({
+      webSocketFactory: () => new SockJS('http://192.168.0.165:8080/ws'),
+      onConnect: () => {
+        setConnected(true);
+        client.subscribe(`/topic/session/${sessionData.id}`, (message) => {
+          const updatedSession = JSON.parse(message.body);
+          setSession(updatedSession);
         });
+      },
+      onDisconnect: () => setConnected(false),
+      onStompError: () => setError('Connection error. Please refresh.')
+    });
 
-        client.activate();
-        setStompClient(client);
-      } catch (err) {
-        setError('Session not found. Please check your link.');
-      }
-    };
+    client.activate();
+    setStompClient(client);
+  } catch (err) {
+    setError('Session not found. Please check your link.');
+  }
+};
+
 
     init();
 
@@ -146,11 +152,11 @@ export default function SessionPage() {
         {currentWord ? (
           <>
             {/* Word — only visible to active player until revealed */}
-            {isMyTurn || session.wordRevealed ? (
-              <div style={styles.word}>{currentWord.word}</div>
-            ) : (
-              <div style={styles.hiddenWord}>🙈 Waiting for word...</div>
-            )}
+{isMyTurn || session.wordRevealed ? (
+  <div style={styles.word}>{currentWord.word}</div>
+) : (
+  <div style={styles.hiddenWord}>🙈 Waiting for word...</div>
+)}
 
             {/* Translation — visible to both only after word is revealed */}
             {currentWord.translation && (isMyTurn || session.wordRevealed) && (

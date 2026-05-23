@@ -31,8 +31,11 @@ export const getWords = (wordBankId) =>
 export const createWord = (wordBankId, word, translation, hint, notes) =>
   api.post('/words', { wordBankId, word, translation, hint, notes });
 
-export const createSession = (teacherId, studentId, wordBankId) =>
-  api.post('/sessions', { teacherId, studentId, wordBankId });
+export const createSession = (teacherId, studentId, wordBankId, sessionType, shuffled) =>
+  api.post('/sessions', { teacherId, studentId, wordBankId, sessionType, shuffled });
+
+export const getSessionWords = (sessionId) =>
+  api.get(`/sessions/${sessionId}/words`);
 
 export const joinSession = (inviteToken) =>
   api.post(`/sessions/join/${inviteToken}`);

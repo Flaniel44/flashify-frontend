@@ -48,6 +48,9 @@ export default function Dashboard() {
 
   const [sessionLink, setSessionLink] = useState(null);
 
+  const [sessionType, setSessionType] = useState('alternating');
+  const [shuffled, setShuffled] = useState(false);
+
   useEffect(() => {
     const saved = localStorage.getItem('teacher');
     if (saved) {
@@ -253,10 +256,10 @@ export default function Dashboard() {
   };
 
   const handleCreateSession = async () => {
-    const res = await createSession(teacher.id, selectedStudent.id, selectedWordBank.id);
+    const res = await createSession(teacher.id, selectedStudent.id, selectedWordBank.id, sessionType, shuffled);
     const token = res.data.inviteToken;
     setSessionLink(`${window.location.origin}/session/${token}`);
-  };
+};
 
   const isAssociated = (wordBankId) => {
     return wordBanks.some(wb => wb.id === wordBankId);
@@ -466,16 +469,55 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <button style={{ ...styles.button, marginTop: 24, background: '#16a34a' }} onClick={handleCreateSession}>
-            Start Session with {selectedStudent.name}
-          </button>
+          {/* Session options */}
+<div style={styles.sessionOptions}>
+  <div style={styles.sessionTypeRow}>
+    <span style={styles.sessionLabel}>Session type:</span>
+    <div style={styles.toggleRow}>
+      {['alternating', 'teacher_only', 'student_only'].map(type => (
+        <button
+          key={type}
+          style={{
+            ...styles.toggleButton,
+            background: sessionType === type ? '#2563eb' : '#e5e7eb',
+            color: sessionType === type ? 'white' : '#374151'
+          }}
+          onClick={() => setSessionType(type)}
+        >
+          {type === 'alternating' ? '🔄 Alternating' : type === 'teacher_only' ? '👩‍🏫 Teacher Only' : '🧑‍🎓 Student Only'}
+        </button>
+      ))}
+    </div>
+  </div>
 
-          {sessionLink && (
-            <div style={styles.sessionLink}>
-              <p>Share this link with {selectedStudent.name}:</p>
-              <a href={sessionLink} target="_blank" rel="noreferrer">{sessionLink}</a>
-            </div>
-          )}
+  <div style={styles.shuffleRow}>
+    <span style={styles.sessionLabel}>Shuffle words:</span>
+    <button
+      style={{
+        ...styles.toggleButton,
+        background: shuffled ? '#16a34a' : '#e5e7eb',
+        color: shuffled ? 'white' : '#374151'
+      }}
+      onClick={() => setShuffled(!shuffled)}
+    >
+      {shuffled ? '🔀 Shuffle On' : '🔀 Shuffle Off'}
+    </button>
+  </div>
+</div>
+
+<button
+  style={{ ...styles.button, marginTop: 16, background: '#16a34a' }}
+  onClick={handleCreateSession}
+>
+  Start Session with {selectedStudent.name}
+</button>
+
+{sessionLink && (
+  <div style={styles.sessionLink}>
+    <p>Share this link with {selectedStudent.name}:</p>
+    <a href={sessionLink} target="_blank" rel="noreferrer">{sessionLink}</a>
+  </div>
+)}
         </section>
       )}
     </div>
@@ -518,5 +560,9 @@ const styles = {
   studentTag: { display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: '#f3f4f6', borderRadius: 12, fontSize: 12, color: '#6b7280' },
   unassociateButton: { background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 14, lineHeight: 1, padding: 0 },
   sessionLink: { marginTop: 16, padding: 16, background: '#f0fdf4', borderRadius: 8, border: '1px solid #86efac' },
-  errorText: { color: '#dc2626', fontSize: 14, marginBottom: 8 }
+  errorText: { color: '#dc2626', fontSize: 14, marginBottom: 8 },
+  sessionOptions: { marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 },
+  sessionTypeRow: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  shuffleRow: { display: 'flex', alignItems: 'center', gap: 12 },
+  sessionLabel: { fontSize: 14, color: '#374151', fontWeight: 600, minWidth: 100 }
 };
