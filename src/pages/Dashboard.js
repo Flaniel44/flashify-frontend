@@ -55,6 +55,9 @@ export default function Dashboard() {
 
   const [lastSessionDates, setLastSessionDates] = useState({});
 
+  const [wordBankSearch, setWordBankSearch] = useState('');
+  const [wordBankFilterStudent, setWordBankFilterStudent] = useState('');
+
   useEffect(() => {
     const saved = localStorage.getItem('teacher');
     if (saved) {
@@ -453,27 +456,68 @@ export default function Dashboard() {
             </div>
 
             {/* Right — all word banks panel */}
-            <div style={styles.col}>
-              <h3 style={styles.colTitle}>All Word Banks</h3>
-              <div style={styles.scrollPanel}>
-                {allWordBanks.map(wb => {
-                  const already = isAssociated(wb.id);
-                  return (
-                    <div key={wb.id} style={styles.panelItem}>
-                      <span style={styles.panelItemName}>{wb.name}</span>
-                      <button
-                        style={{ ...styles.associateButton, opacity: already ? 0.4 : 1, cursor: already ? 'not-allowed' : 'pointer' }}
-                        onClick={() => !already && handleAssociateWordBank(wb.id)}
-                        disabled={already}
-                        title={already ? 'Already associated' : 'Associate with student'}
-                      >
-                        {already ? '✓ Added' : '+ Add'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+<div style={styles.col}>
+  <h3 style={styles.colTitle}>All Word Banks</h3>
+  
+  {/* Search */}
+  <input
+    style={{ ...styles.input, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
+    placeholder="Search word banks..."
+    value={wordBankSearch}
+    onChange={e => setWordBankSearch(e.target.value)}
+  />
+
+  {/* Filter by student */}
+  <select
+    style={{ ...styles.input, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
+    value={wordBankFilterStudent}
+    onChange={e => setWordBankFilterStudent(e.target.value)}
+  >
+    <option value="">All students</option>
+    {students.map(s => (
+      <option key={s.id} value={s.id}>{s.name}</option>
+    ))}
+  </select>
+
+  <div style={styles.scrollPanel}>
+    {allWordBanks
+      .filter(wb => {
+        const matchesSearch = wb.name.toLowerCase().includes(wordBankSearch.toLowerCase());
+        const matchesStudent = wordBankFilterStudent === '' || 
+          wb.students.some(s => s.id === wordBankFilterStudent);
+        return matchesSearch && matchesStudent;
+      })
+      .map(wb => {
+        const already = isAssociated(wb.id);
+        return (
+          <div key={wb.id} style={styles.panelItem}>
+            <div style={styles.panelItemInfo}>
+              <span style={styles.panelItemName}>{wb.name}</span>
+              <span style={styles.panelItemStudents}>
+                {wb.students.map(s => s.name).join(', ')}
+              </span>
             </div>
+            <button
+              style={{ ...styles.associateButton, opacity: already ? 0.4 : 1, cursor: already ? 'not-allowed' : 'pointer' }}
+              onClick={() => !already && handleAssociateWordBank(wb.id)}
+              disabled={already}
+              title={already ? 'Already associated' : 'Associate with student'}
+            >
+              {already ? '✓ Added' : '+ Add'}
+            </button>
+          </div>
+        );
+      })}
+      {allWordBanks.filter(wb => {
+        const matchesSearch = wb.name.toLowerCase().includes(wordBankSearch.toLowerCase());
+        const matchesStudent = wordBankFilterStudent === '' ||
+          wb.students.some(s => s.id === wordBankFilterStudent);
+        return matchesSearch && matchesStudent;
+      }).length === 0 && (
+        <div style={styles.noResults}>No word banks found</div>
+      )}
+  </div>
+</div>
 
           </div>
         </section>
@@ -622,4 +666,7 @@ const styles = {
   studentInfo: { display: 'flex', flexDirection: 'column', cursor: 'pointer', flex: 1 },
 studentEmail: { fontSize: 12, color: '#6b7280', marginTop: 2 },
 lastSession: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
+panelItemInfo: { display: 'flex', flexDirection: 'column', flex: 1 },
+panelItemStudents: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
+noResults: { padding: 16, textAlign: 'center', color: '#9ca3af', fontSize: 14 },
 };
