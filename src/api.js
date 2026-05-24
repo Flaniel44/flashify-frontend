@@ -7,17 +7,14 @@ const api = axios.create({
   }
 });
 
-export const registerTeacher = (name, username, password, registrationCode) =>
-  api.post('/teachers/register', { name, username, password, registrationCode });
+export const registerTeacher = (name, username, password, registrationCode, email) =>
+  api.post('/teachers/register', { name, username, password, registrationCode, email });
 
 export const loginTeacher = (username, password) =>
   api.post('/teachers/login', { username, password });
 
 export const getStudents = (teacherId) =>
   api.get(`/students/teacher/${teacherId}`);
-
-export const createStudent = (teacherId, name) =>
-  api.post('/students', { teacherId, name });
 
 export const getWordBanks = (studentId) =>
   api.get(`/word-banks/student/${studentId}`);
@@ -39,9 +36,6 @@ export const getSessionWords = (sessionId) =>
 
 export const joinSession = (inviteToken) =>
   api.post(`/sessions/join/${inviteToken}`);
-
-export const updateStudent = (id, name) =>
-  api.put(`/students/${id}`, { name });
 
 export const deleteStudent = (id) =>
   api.delete(`/students/${id}`);
@@ -69,3 +63,12 @@ export const unassociateWordBank = (wordBankId, studentId) =>
 
 export const duplicateWordBank = (wordBankId) =>
   api.post(`/word-banks/${wordBankId}/duplicate`);
+
+export const createStudent = (teacherId, name, email) =>
+  api.post('/students', { teacherId, name, email });
+
+export const updateStudent = (id, name, email) =>
+  api.put(`/students/${id}`, { name, email });
+
+export const getLastSessionDate = (studentId) =>
+  api.get(`/students/${studentId}/last-session`);

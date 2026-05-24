@@ -18,18 +18,20 @@ import {
   createWord,
   updateWord,
   deleteWord,
-  createSession
+  createSession,
+  getLastSessionDate
 } from '../api';
 
 export default function Dashboard() {
   const [teacher, setTeacher] = useState(null);
   const [authMode, setAuthMode] = useState('login');
-  const [authForm, setAuthForm] = useState({ name: '', username: '', password: '', registrationCode: '' });
+  const [authForm, setAuthForm] = useState({ name: '', username: '', password: '', registrationCode: '', email: '' });
   const [authError, setAuthError] = useState(null);
 
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [studentForm, setStudentForm] = useState({ name: '' });
+  const [studentForm, setStudentForm] = useState({ name: '', email: '' });
+  const [editStudentEmail, setEditStudentEmail] = useState('');
   const [editingStudent, setEditingStudent] = useState(null);
   const [editStudentName, setEditStudentName] = useState('');
 
@@ -51,6 +53,8 @@ export default function Dashboard() {
   const [sessionType, setSessionType] = useState('alternating');
   const [shuffled, setShuffled] = useState(false);
 
+  const [lastSessionDates, setLastSessionDates] = useState({});
+
   useEffect(() => {
     const saved = localStorage.getItem('teacher');
     if (saved) {
@@ -62,9 +66,19 @@ export default function Dashboard() {
   }, []);
 
   const loadStudents = async (teacherId) => {
-    const res = await getStudents(teacherId);
-    setStudents(res.data);
-  };
+  const res = await getStudents(teacherId);
+  setStudents(res.data);
+  loadLastSessionDates(res.data);
+};
+
+  const loadLastSessionDates = async (studentList) => {
+  const dates = {};
+  await Promise.all(studentList.map(async (s) => {
+    const res = await getLastSessionDate(s.id);
+    dates[s.id] = res.data;
+  }));
+  setLastSessionDates(dates);
+};
 
   const loadAllWordBanks = async (teacherId) => {
     const res = await getWordBanksByTeacher(teacherId);
@@ -96,23 +110,24 @@ export default function Dashboard() {
   };
 
   const handleRegister = async () => {
-    setAuthError(null);
-    try {
-      const res = await registerTeacher(
-        authForm.name,
-        authForm.username,
-        authForm.password,
-        authForm.registrationCode
-      );
-      const t = res.data;
-      setTeacher(t);
-      localStorage.setItem('teacher', JSON.stringify(t));
-      loadStudents(t.id);
-      loadAllWordBanks(t.id);
-    } catch (err) {
-      setAuthError(err.response?.data || 'Registration failed');
-    }
-  };
+  setAuthError(null);
+  try {
+    const res = await registerTeacher(
+      authForm.name,
+      authForm.username,
+      authForm.password,
+      authForm.registrationCode,
+      authForm.email
+    );
+    const t = res.data;
+    setTeacher(t);
+    localStorage.setItem('teacher', JSON.stringify(t));
+    loadStudents(t.id);
+    loadAllWordBanks(t.id);
+  } catch (err) {
+    setAuthError(err.response?.data || 'Registration failed');
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem('teacher');
@@ -130,19 +145,20 @@ export default function Dashboard() {
 
   // --- Students ---
   const handleCreateStudent = async () => {
-    if (!studentForm.name.trim()) return;
-    await createStudent(teacher.id, studentForm.name);
-    setStudentForm({ name: '' });
-    loadStudents(teacher.id);
-  };
+  if (!studentForm.name.trim()) return;
+  await createStudent(teacher.id, studentForm.name, studentForm.email);
+  setStudentForm({ name: '', email: '' });
+  loadStudents(teacher.id);
+};
 
   const handleUpdateStudent = async (id) => {
-    if (!editStudentName.trim()) return;
-    await updateStudent(id, editStudentName);
-    setEditingStudent(null);
-    setEditStudentName('');
-    loadStudents(teacher.id);
-  };
+  if (!editStudentName.trim()) return;
+  await updateStudent(id, editStudentName, editStudentEmail);
+  setEditingStudent(null);
+  setEditStudentName('');
+  setEditStudentEmail('');
+  loadStudents(teacher.id);
+};
 
   const handleDeleteStudent = async (id) => {
     if (!window.confirm('Delete this student? This cannot be undone.')) return;
@@ -291,15 +307,16 @@ export default function Dashboard() {
         )}
 
         {authMode === 'register' && (
-          <div style={styles.authForm}>
-            <input style={styles.input} placeholder="Your name" value={authForm.name} onChange={e => setAuthForm({ ...authForm, name: e.target.value })} />
-            <input style={styles.input} placeholder="Username" value={authForm.username} onChange={e => setAuthForm({ ...authForm, username: e.target.value })} />
-            <input style={styles.input} placeholder="Password" type="password" value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} />
-            <input style={styles.input} placeholder="Registration code" type="password" value={authForm.registrationCode} onChange={e => setAuthForm({ ...authForm, registrationCode: e.target.value })} />
-            {authError && <div style={styles.errorText}>{authError}</div>}
-            <button style={styles.button} onClick={handleRegister}>Register</button>
-          </div>
-        )}
+  <div style={styles.authForm}>
+    <input style={styles.input} placeholder="Your name" value={authForm.name} onChange={e => setAuthForm({ ...authForm, name: e.target.value })} />
+    <input style={styles.input} placeholder="Username" value={authForm.username} onChange={e => setAuthForm({ ...authForm, username: e.target.value })} />
+    <input style={styles.input} placeholder="Email (optional)" value={authForm.email} onChange={e => setAuthForm({ ...authForm, email: e.target.value })} />
+    <input style={styles.input} placeholder="Password" type="password" value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} />
+    <input style={styles.input} placeholder="Registration code" type="password" value={authForm.registrationCode} onChange={e => setAuthForm({ ...authForm, registrationCode: e.target.value })} />
+    {authError && <div style={styles.errorText}>{authError}</div>}
+    <button style={styles.button} onClick={handleRegister}>Register</button>
+  </div>
+)}
       </div>
     );
   }
@@ -319,30 +336,67 @@ export default function Dashboard() {
       <section style={styles.section}>
         <h2>Students</h2>
         <div style={styles.row}>
-          <input style={styles.input} placeholder="Student name" value={studentForm.name} onChange={e => setStudentForm({ name: e.target.value })} />
-          <button style={styles.button} onClick={handleCreateStudent}>Add Student</button>
-        </div>
+  <input
+    style={styles.input}
+    placeholder="Student name"
+    value={studentForm.name}
+    onChange={e => setStudentForm({ ...studentForm, name: e.target.value })}
+  />
+  <input
+    style={styles.input}
+    placeholder="Student email"
+    value={studentForm.email}
+    onChange={e => setStudentForm({ ...studentForm, email: e.target.value })}
+  />
+  <button style={styles.button} onClick={handleCreateStudent}>Add Student</button>
+</div>
         <div style={styles.list}>
-          {students.map(s => (
-            <div key={s.id} style={{ ...styles.listItem, background: selectedStudent?.id === s.id ? '#dbeafe' : '#f9fafb' }}>
-              {editingStudent === s.id ? (
-                <div style={styles.inlineEditRow}>
-                  <input style={styles.input} value={editStudentName} onChange={e => setEditStudentName(e.target.value)} />
-                  <button style={styles.saveButton} onClick={() => handleUpdateStudent(s.id)}>Save</button>
-                  <button style={styles.cancelButton} onClick={() => setEditingStudent(null)}>Cancel</button>
-                </div>
-              ) : (
-                <div style={styles.itemRow}>
-                  <span onClick={() => handleSelectStudent(s)} style={styles.itemLabel}>{s.name}</span>
-                  <div style={styles.itemActions}>
-                    <button style={styles.editButton} onClick={() => { setEditingStudent(s.id); setEditStudentName(s.name); }}>Edit</button>
-                    <button style={styles.deleteButton} onClick={() => handleDeleteStudent(s.id)}>Delete</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+  {students.map(s => (
+    <div key={s.id} style={{ ...styles.listItem, background: selectedStudent?.id === s.id ? '#dbeafe' : '#f9fafb' }}>
+      {editingStudent === s.id ? (
+        <div style={styles.inlineEditRow}>
+          <input
+            style={styles.input}
+            placeholder="Name"
+            value={editStudentName}
+            onChange={e => setEditStudentName(e.target.value)}
+          />
+          <input
+            style={styles.input}
+            placeholder="Email"
+            value={editStudentEmail}
+            onChange={e => setEditStudentEmail(e.target.value)}
+          />
+          <button style={styles.saveButton} onClick={() => handleUpdateStudent(s.id)}>Save</button>
+          <button style={styles.cancelButton} onClick={() => setEditingStudent(null)}>Cancel</button>
         </div>
+      ) : (
+        <div style={styles.itemRow}>
+          <div style={styles.studentInfo} onClick={() => handleSelectStudent(s)}>
+            <span style={styles.itemLabel}>{s.name}</span>
+            {s.email && <span style={styles.studentEmail}>{s.email}</span>}
+            {lastSessionDates[s.id] && (
+              <span style={styles.lastSession}>
+                Last session: {new Date(lastSessionDates[s.id]).toLocaleString()}
+              </span>
+            )}
+            {!lastSessionDates[s.id] && (
+              <span style={styles.lastSession}>No sessions yet</span>
+            )}
+          </div>
+          <div style={styles.itemActions}>
+            <button style={styles.editButton} onClick={() => {
+              setEditingStudent(s.id);
+              setEditStudentName(s.name);
+              setEditStudentEmail(s.email || '');
+            }}>Edit</button>
+            <button style={styles.deleteButton} onClick={() => handleDeleteStudent(s.id)}>Delete</button>
+          </div>
+        </div>
+      )}
+    </div>
+  ))}
+</div>
       </section>
 
       {/* Two column layout for word banks */}
@@ -564,5 +618,8 @@ const styles = {
   sessionOptions: { marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 },
   sessionTypeRow: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
   shuffleRow: { display: 'flex', alignItems: 'center', gap: 12 },
-  sessionLabel: { fontSize: 14, color: '#374151', fontWeight: 600, minWidth: 100 }
+  sessionLabel: { fontSize: 14, color: '#374151', fontWeight: 600, minWidth: 100 },
+  studentInfo: { display: 'flex', flexDirection: 'column', cursor: 'pointer', flex: 1 },
+studentEmail: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+lastSession: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
 };
