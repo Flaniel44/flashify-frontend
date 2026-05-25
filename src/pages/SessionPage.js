@@ -44,7 +44,7 @@ export default function SessionPage() {
         }
 
         const client = new Client({
-          webSocketFactory: () => new SockJS('http://192.168.0.165:8080/ws'),
+          webSocketFactory: () => new SockJS(`${process.env.REACT_APP_WS_URL}/ws`),
           onConnect: () => {
             setConnected(true);
             client.subscribe(`/topic/session/${sessionData.id}`, (message) => {
