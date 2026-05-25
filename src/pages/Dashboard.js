@@ -25,6 +25,16 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+}
+
 export default function Dashboard() {
   const [teacher, setTeacher] = useState(null);
   const [authMode, setAuthMode] = useState('login');
@@ -60,6 +70,11 @@ export default function Dashboard() {
 
   const { theme } = useTheme();
   const navigate = useNavigate();
+
+  const isMobile = useIsMobile();
+  const [wordBankPanelOpen, setWordBankPanelOpen] = useState(false);
+
+  const [studentSearch, setStudentSearch] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('teacher');
@@ -348,13 +363,23 @@ export default function Dashboard() {
       {/* Students */}
       <section style={{ ...styles.section, borderTop: `1px solid ${theme.border}` }}>
         <h2 style={{ color: theme.text }}>Students</h2>
+        <div style={{ maxWidth: isMobile ? '100%' : '50%' }}>
         <div style={styles.row}>
           <input style={inputStyle} placeholder="Student name" value={studentForm.name} onChange={e => setStudentForm({ ...studentForm, name: e.target.value })} />
           <input style={inputStyle} placeholder="Student email" value={studentForm.email} onChange={e => setStudentForm({ ...studentForm, email: e.target.value })} />
           <button style={{ ...styles.button, background: theme.primary, color: theme.primaryText }} onClick={handleCreateStudent}>Add Student</button>
         </div>
-        <div style={styles.list}>
-          {students.map(s => (
+        <input
+  style={{ ...inputStyle, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
+  placeholder="Search students..."
+  value={studentSearch}
+  onChange={e => setStudentSearch(e.target.value)}
+/>
+        <div style={{ ...styles.list, maxHeight: students.length > 5 ? 400 : 'none', overflowY: students.length > 5 ? 'auto' : 'visible' }}>
+  {students
+    .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      s.email?.toLowerCase().includes(studentSearch.toLowerCase()))
+    .map(s => (
             <div key={s.id} style={listItemStyle(selectedStudent?.id === s.id)}>
               {editingStudent === s.id ? (
                 <div style={styles.inlineEditRow}>
@@ -386,113 +411,186 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+        </div>
       </section>
 
       {/* Two column layout for word banks */}
       {selectedStudent && (
         <section style={{ ...styles.section, borderTop: `1px solid ${theme.border}` }}>
           <h2 style={{ color: theme.text }}>Word Banks for {selectedStudent.name}</h2>
-          <div style={styles.twoCols}>
+          <div style={isMobile ? styles.oneCol : styles.twoCols}>
 
-            {/* Left — student's word banks */}
-            <div style={styles.col}>
-              <h3 style={{ ...styles.colTitle, color: theme.text }}>Associated Word Banks</h3>
-              <div style={styles.row}>
-                <input style={inputStyle} placeholder="New word bank name" value={wordBankForm.name} onChange={e => setWordBankForm({ name: e.target.value })} />
-                <button style={{ ...styles.button, background: theme.primary, color: theme.primaryText }} onClick={handleCreateWordBank}>Add</button>
-              </div>
-              <div style={styles.list}>
-                {wordBanks.map(wb => (
-                  <div key={wb.id} style={listItemStyle(selectedWordBank?.id === wb.id)}>
-                    {editingWordBank === wb.id ? (
-                      <div style={styles.inlineEditRow}>
-                        <input style={inputStyle} value={editWordBankName} onChange={e => setEditWordBankName(e.target.value)} />
-                        <button style={styles.saveButton} onClick={() => handleUpdateWordBank(wb.id)}>Save</button>
-                        <button style={styles.cancelButton} onClick={() => setEditingWordBank(null)}>Cancel</button>
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={styles.itemRow}>
-                          <span onClick={() => handleSelectWordBank(wb)} style={{ ...styles.itemLabel, color: theme.text }}><strong>{wb.name}</strong></span>
-                          <div style={styles.itemActions}>
-                            <button style={{ ...styles.duplicateButton, background: theme.surfaceAlt, border: `1px solid ${theme.border}`, color: theme.primary }} onClick={() => handleDuplicateWordBank(wb.id)} title="Duplicate">⎘</button>
-                            <button style={{ ...styles.editButton, background: theme.surfaceAlt, border: `1px solid ${theme.border}`, color: theme.text }} onClick={() => { setEditingWordBank(wb.id); setEditWordBankName(wb.name); }}>Edit</button>
-                            <button style={styles.deleteButton} onClick={() => handleDeleteWordBank(wb.id)}>Delete</button>
-                          </div>
-                        </div>
-                        <div style={styles.associatedStudents}>
-                          {wb.students
-                            .filter(s => s.id !== selectedStudent.id)
-                            .map(s => (
-                              <span key={s.id} style={{ ...styles.studentTag, background: theme.surfaceAlt, color: theme.textMuted }}>
-                                {s.name}
-                                <button style={styles.unassociateButton} onClick={() => handleUnassociateWordBank(wb.id, s.id)} title={`Remove ${s.name}`}>−</button>
-                              </span>
-                            ))}
-                        </div>
-                      </div>
-                    )}
+  {/* On mobile: All Word Banks comes first and is collapsible */}
+  {isMobile && (
+    <div style={styles.col}>
+      <button
+        style={{ ...styles.collapsibleHeader, background: theme.surfaceAlt, color: theme.text, border: `1px solid ${theme.border}` }}
+        onClick={() => setWordBankPanelOpen(!wordBankPanelOpen)}
+      >
+        <span style={{ fontWeight: 600, fontSize: 15 }}>All Word Banks</span>
+        <span>{wordBankPanelOpen ? '▲' : '▼'}</span>
+      </button>
+
+      {wordBankPanelOpen && (
+        <div style={{ marginTop: 8 }}>
+          <input
+            style={{ ...inputStyle, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
+            placeholder="Search word banks..."
+            value={wordBankSearch}
+            onChange={e => setWordBankSearch(e.target.value)}
+          />
+          <select
+            style={{ ...inputStyle, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
+            value={wordBankFilterStudent}
+            onChange={e => setWordBankFilterStudent(e.target.value)}
+          >
+            <option value="">All students</option>
+            {students.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <div style={{ ...styles.scrollPanel, border: `1px solid ${theme.border}`, background: theme.background }}>
+            {allWordBanks
+              .filter(wb => {
+                const matchesSearch = wb.name.toLowerCase().includes(wordBankSearch.toLowerCase());
+                const matchesStudent = wordBankFilterStudent === '' || wb.students.some(s => s.id === wordBankFilterStudent);
+                return matchesSearch && matchesStudent;
+              })
+              .map(wb => {
+                const already = isAssociated(wb.id);
+                return (
+                  <div key={wb.id} style={{ ...styles.panelItem, background: theme.surface }}>
+                    <div style={styles.panelItemInfo}>
+                      <span style={{ ...styles.panelItemName, color: theme.text }}>{wb.name}</span>
+                      <span style={{ ...styles.panelItemStudents, color: theme.textLight }}>
+                        {wb.students.map(s => s.name).join(', ')}
+                      </span>
+                    </div>
+                    <button
+                      style={{ ...styles.associateButton, opacity: already ? 0.4 : 1, cursor: already ? 'not-allowed' : 'pointer' }}
+                      onClick={() => !already && handleAssociateWordBank(wb.id)}
+                      disabled={already}
+                    >
+                      {already ? '✓ Added' : '+ Add'}
+                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right — all word banks panel */}
-            <div style={styles.col}>
-              <h3 style={{ ...styles.colTitle, color: theme.text }}>All Word Banks</h3>
-              <input
-                style={{ ...inputStyle, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
-                placeholder="Search word banks..."
-                value={wordBankSearch}
-                onChange={e => setWordBankSearch(e.target.value)}
-              />
-              <select
-                style={{ ...inputStyle, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
-                value={wordBankFilterStudent}
-                onChange={e => setWordBankFilterStudent(e.target.value)}
-              >
-                <option value="">All students</option>
-                {students.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-              <div style={{ ...styles.scrollPanel, border: `1px solid ${theme.border}`, background: theme.background }}>
-                {allWordBanks
-                  .filter(wb => {
-                    const matchesSearch = wb.name.toLowerCase().includes(wordBankSearch.toLowerCase());
-                    const matchesStudent = wordBankFilterStudent === '' || wb.students.some(s => s.id === wordBankFilterStudent);
-                    return matchesSearch && matchesStudent;
-                  })
-                  .map(wb => {
-                    const already = isAssociated(wb.id);
-                    return (
-                      <div key={wb.id} style={{ ...styles.panelItem, background: theme.surface }}>
-                        <div style={styles.panelItemInfo}>
-                          <span style={{ ...styles.panelItemName, color: theme.text }}>{wb.name}</span>
-                          <span style={{ ...styles.panelItemStudents, color: theme.textLight }}>
-                            {wb.students.map(s => s.name).join(', ')}
-                          </span>
-                        </div>
-                        <button
-                          style={{ ...styles.associateButton, opacity: already ? 0.4 : 1, cursor: already ? 'not-allowed' : 'pointer' }}
-                          onClick={() => !already && handleAssociateWordBank(wb.id)}
-                          disabled={already}
-                        >
-                          {already ? '✓ Added' : '+ Add'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                {allWordBanks.filter(wb => {
-                  const matchesSearch = wb.name.toLowerCase().includes(wordBankSearch.toLowerCase());
-                  const matchesStudent = wordBankFilterStudent === '' || wb.students.some(s => s.id === wordBankFilterStudent);
-                  return matchesSearch && matchesStudent;
-                }).length === 0 && (
-                  <div style={{ ...styles.noResults, color: theme.textLight }}>No word banks found</div>
-                )}
-              </div>
-            </div>
+                );
+              })}
+            {allWordBanks.filter(wb => {
+              const matchesSearch = wb.name.toLowerCase().includes(wordBankSearch.toLowerCase());
+              const matchesStudent = wordBankFilterStudent === '' || wb.students.some(s => s.id === wordBankFilterStudent);
+              return matchesSearch && matchesStudent;
+            }).length === 0 && (
+              <div style={{ ...styles.noResults, color: theme.textLight }}>No word banks found</div>
+            )}
           </div>
+        </div>
+      )}
+    </div>
+  )}
+
+  {/* Left — student's associated word banks (always visible) */}
+  <div style={styles.col}>
+    <h3 style={{ ...styles.colTitle, color: theme.text }}>Associated Word Banks</h3>
+    <div style={styles.row}>
+      <input style={inputStyle} placeholder="New word bank name" value={wordBankForm.name} onChange={e => setWordBankForm({ name: e.target.value })} />
+      <button style={{ ...styles.button, background: theme.primary, color: theme.primaryText }} onClick={handleCreateWordBank}>Add</button>
+    </div>
+    <div style={styles.list}>
+      {wordBanks.map(wb => (
+        <div key={wb.id} style={listItemStyle(selectedWordBank?.id === wb.id)}>
+          {editingWordBank === wb.id ? (
+            <div style={styles.inlineEditRow}>
+              <input style={inputStyle} value={editWordBankName} onChange={e => setEditWordBankName(e.target.value)} />
+              <button style={styles.saveButton} onClick={() => handleUpdateWordBank(wb.id)}>Save</button>
+              <button style={styles.cancelButton} onClick={() => setEditingWordBank(null)}>Cancel</button>
+            </div>
+          ) : (
+            <div>
+              <div style={styles.itemRow}>
+                <span onClick={() => handleSelectWordBank(wb)} style={{ ...styles.itemLabel, color: theme.text }}><strong>{wb.name}</strong></span>
+                <div style={styles.itemActions}>
+                  <button style={{ ...styles.duplicateButton, background: theme.surfaceAlt, border: `1px solid ${theme.border}`, color: theme.primary }} onClick={() => handleDuplicateWordBank(wb.id)} title="Duplicate">⎘</button>
+                  <button style={{ ...styles.editButton, background: theme.surfaceAlt, border: `1px solid ${theme.border}`, color: theme.text }} onClick={() => { setEditingWordBank(wb.id); setEditWordBankName(wb.name); }}>Edit</button>
+                  <button style={styles.deleteButton} onClick={() => handleDeleteWordBank(wb.id)}>Delete</button>
+                </div>
+              </div>
+              <div style={styles.associatedStudents}>
+                {wb.students
+                  .filter(s => s.id !== selectedStudent.id)
+                  .map(s => (
+                    <span key={s.id} style={{ ...styles.studentTag, background: theme.surfaceAlt, color: theme.textMuted }}>
+                      {s.name}
+                      <button style={styles.unassociateButton} onClick={() => handleUnassociateWordBank(wb.id, s.id)} title={`Remove ${s.name}`}>−</button>
+                    </span>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+
+  {/* Right — all word banks panel (desktop only) */}
+  {!isMobile && (
+    <div style={styles.col}>
+      <h3 style={{ ...styles.colTitle, color: theme.text }}>All Word Banks</h3>
+      <input
+        style={{ ...inputStyle, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
+        placeholder="Search word banks..."
+        value={wordBankSearch}
+        onChange={e => setWordBankSearch(e.target.value)}
+      />
+      <select
+        style={{ ...inputStyle, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
+        value={wordBankFilterStudent}
+        onChange={e => setWordBankFilterStudent(e.target.value)}
+      >
+        <option value="">All students</option>
+        {students.map(s => (
+          <option key={s.id} value={s.id}>{s.name}</option>
+        ))}
+      </select>
+      <div style={{ ...styles.scrollPanel, border: `1px solid ${theme.border}`, background: theme.background }}>
+        {allWordBanks
+          .filter(wb => {
+            const matchesSearch = wb.name.toLowerCase().includes(wordBankSearch.toLowerCase());
+            const matchesStudent = wordBankFilterStudent === '' || wb.students.some(s => s.id === wordBankFilterStudent);
+            return matchesSearch && matchesStudent;
+          })
+          .map(wb => {
+            const already = isAssociated(wb.id);
+            return (
+              <div key={wb.id} style={{ ...styles.panelItem, background: theme.surface }}>
+                <div style={styles.panelItemInfo}>
+                  <span style={{ ...styles.panelItemName, color: theme.text }}>{wb.name}</span>
+                  <span style={{ ...styles.panelItemStudents, color: theme.textLight }}>
+                    {wb.students.map(s => s.name).join(', ')}
+                  </span>
+                </div>
+                <button
+                  style={{ ...styles.associateButton, opacity: already ? 0.4 : 1, cursor: already ? 'not-allowed' : 'pointer' }}
+                  onClick={() => !already && handleAssociateWordBank(wb.id)}
+                  disabled={already}
+                >
+                  {already ? '✓ Added' : '+ Add'}
+                </button>
+              </div>
+            );
+          })}
+        {allWordBanks.filter(wb => {
+          const matchesSearch = wb.name.toLowerCase().includes(wordBankSearch.toLowerCase());
+          const matchesStudent = wordBankFilterStudent === '' || wb.students.some(s => s.id === wordBankFilterStudent);
+          return matchesSearch && matchesStudent;
+        }).length === 0 && (
+          <div style={{ ...styles.noResults, color: theme.textLight }}>No word banks found</div>
+        )}
+      </div>
+    </div>
+  )}
+
+</div>
         </section>
       )}
 
@@ -638,5 +736,7 @@ const styles = {
   lastSession: { fontSize: 11, marginTop: 2 },
   panelItemInfo: { display: 'flex', flexDirection: 'column', flex: 1 },
   panelItemStudents: { fontSize: 11, marginTop: 2 },
-  noResults: { padding: 16, textAlign: 'center', fontSize: 14 }
+  noResults: { padding: 16, textAlign: 'center', fontSize: 14 },
+  oneCol: { display: 'flex', flexDirection: 'column', gap: 16 },
+collapsibleHeader: { width: '100%', padding: '12px 16px', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: 'none' },
 };
