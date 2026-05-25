@@ -116,53 +116,56 @@ export default function Dashboard() {
     setWords(res.data);
   };
 
-  const handleLogin = async () => {
-    setAuthError(null);
-    try {
-      const res = await loginTeacher(authForm.username, authForm.password);
-      const t = res.data;
-      setTeacher(t);
-      localStorage.setItem('teacher', JSON.stringify(t));
-      loadStudents(t.id);
-      loadAllWordBanks(t.id);
-    } catch (err) {
-      setAuthError(err.response?.data || 'Login failed');
-    }
-  };
+const handleLogin = async () => {
+  setAuthError(null);
+  try {
+    const res = await loginTeacher(authForm.username, authForm.password);
+    const { teacher: t, token } = res.data;
+    setTeacher(t);
+    localStorage.setItem('teacher', JSON.stringify(t));
+    localStorage.setItem('flashify_token', token);
+    loadStudents(t.id);
+    loadAllWordBanks(t.id);
+  } catch (err) {
+    setAuthError(err.response?.data || 'Login failed');
+  }
+};
 
-  const handleRegister = async () => {
-    setAuthError(null);
-    try {
-      const res = await registerTeacher(
-        authForm.name,
-        authForm.username,
-        authForm.password,
-        authForm.registrationCode,
-        authForm.email
-      );
-      const t = res.data;
-      setTeacher(t);
-      localStorage.setItem('teacher', JSON.stringify(t));
-      loadStudents(t.id);
-      loadAllWordBanks(t.id);
-    } catch (err) {
-      setAuthError(err.response?.data || 'Registration failed');
-    }
-  };
+const handleRegister = async () => {
+  setAuthError(null);
+  try {
+    const res = await registerTeacher(
+      authForm.name,
+      authForm.username,
+      authForm.password,
+      authForm.registrationCode,
+      authForm.email
+    );
+    const { teacher: t, token } = res.data;
+    setTeacher(t);
+    localStorage.setItem('teacher', JSON.stringify(t));
+    localStorage.setItem('flashify_token', token);
+    loadStudents(t.id);
+    loadAllWordBanks(t.id);
+  } catch (err) {
+    setAuthError(err.response?.data || 'Registration failed');
+  }
+};
 
-  const handleLogout = () => {
-    localStorage.removeItem('teacher');
-    setTeacher(null);
-    setStudents([]);
-    setSelectedStudent(null);
-    setAllWordBanks([]);
-    setWordBanks([]);
-    setSelectedWordBank(null);
-    setWords([]);
-    setSessionLink(null);
-    setAuthForm({ name: '', username: '', password: '', registrationCode: '', email: '' });
-    setAuthError(null);
-  };
+ const handleLogout = () => {
+  localStorage.removeItem('teacher');
+  localStorage.removeItem('flashify_token');
+  setTeacher(null);
+  setStudents([]);
+  setSelectedStudent(null);
+  setAllWordBanks([]);
+  setWordBanks([]);
+  setSelectedWordBank(null);
+  setWords([]);
+  setSessionLink(null);
+  setAuthForm({ name: '', username: '', password: '', registrationCode: '', email: '' });
+  setAuthError(null);
+};
 
   const handleCreateStudent = async () => {
     if (!studentForm.name.trim()) return;

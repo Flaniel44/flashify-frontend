@@ -7,6 +7,28 @@ const api = axios.create({
   }
 });
 
+// Automatically attach JWT token to every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('flashify_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// If token is rejected redirect to login
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 403) {
+      localStorage.removeItem('flashify_token');
+      localStorage.removeItem('teacher');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const registerTeacher = (name, username, password, registrationCode, email) =>
   api.post('/teachers/register', { name, username, password, registrationCode, email });
 
