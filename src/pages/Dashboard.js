@@ -127,7 +127,11 @@ const handleLogin = async () => {
     loadStudents(t.id);
     loadAllWordBanks(t.id);
   } catch (err) {
-    setAuthError(err.response?.data || 'Login failed');
+    if (err.response?.status === 429) {
+      setAuthError('Too many login attempts. Please wait a minute and try again.');
+    } else {
+      setAuthError(err.response?.data || 'Login failed');
+    }
   }
 };
 
@@ -308,43 +312,55 @@ const handleRegister = async () => {
   });
 
   if (!teacher) {
-    return (
-      <div style={{ ...styles.container, background: theme.background, color: theme.text }}>
-        <h1 style={{ color: theme.text }}>Flashify 🇬🇧</h1>
-        <div style={styles.toggleRow}>
-          <button
-            style={{ ...styles.toggleButton, background: authMode === 'login' ? theme.primary : theme.surfaceAlt, color: authMode === 'login' ? theme.primaryText : theme.text }}
-            onClick={() => { setAuthMode('login'); setAuthError(null); }}
-          >Login</button>
-          <button
-            style={{ ...styles.toggleButton, background: authMode === 'register' ? theme.primary : theme.surfaceAlt, color: authMode === 'register' ? theme.primaryText : theme.text }}
-            onClick={() => { setAuthMode('register'); setAuthError(null); }}
-          >Register</button>
+  return (
+    <div style={{ ...styles.container, background: theme.background, color: theme.text }}>
+      <div style={styles.authLayout}>
+        
+        {/* Left — login form */}
+        <div style={styles.authLeft}>
+          <h1 style={{ color: theme.text, marginTop: 0 }}>Flashify 🇬🇧</h1>
+          <div style={styles.toggleRow}>
+            <button
+              style={{ ...styles.toggleButton, background: authMode === 'login' ? theme.primary : theme.surfaceAlt, color: authMode === 'login' ? theme.primaryText : theme.text }}
+              onClick={() => { setAuthMode('login'); setAuthError(null); }}
+            >Login</button>
+            <button
+              style={{ ...styles.toggleButton, background: authMode === 'register' ? theme.primary : theme.surfaceAlt, color: authMode === 'register' ? theme.primaryText : theme.text }}
+              onClick={() => { setAuthMode('register'); setAuthError(null); }}
+            >Register</button>
+          </div>
+
+          {authMode === 'login' && (
+            <div style={styles.authForm}>
+              <input style={inputStyle} placeholder="Username" value={authForm.username} onChange={e => setAuthForm({ ...authForm, username: e.target.value })} />
+              <input style={inputStyle} placeholder="Password" type="password" value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} />
+              {authError && <div style={styles.errorText}>{authError}</div>}
+              <button style={{ ...styles.button, background: theme.primary, color: theme.primaryText }} onClick={handleLogin}>Login</button>
+            </div>
+          )}
+
+          {authMode === 'register' && (
+            <div style={styles.authForm}>
+              <input style={inputStyle} placeholder="Your name" value={authForm.name} onChange={e => setAuthForm({ ...authForm, name: e.target.value })} />
+              <input style={inputStyle} placeholder="Username" value={authForm.username} onChange={e => setAuthForm({ ...authForm, username: e.target.value })} />
+              <input style={inputStyle} placeholder="Email (optional)" value={authForm.email} onChange={e => setAuthForm({ ...authForm, email: e.target.value })} />
+              <input style={inputStyle} placeholder="Password" type="password" value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} />
+              <input style={inputStyle} placeholder="Registration code" type="password" value={authForm.registrationCode} onChange={e => setAuthForm({ ...authForm, registrationCode: e.target.value })} />
+              {authError && <div style={styles.errorText}>{authError}</div>}
+              <button style={{ ...styles.button, background: theme.primary, color: theme.primaryText }} onClick={handleRegister}>Register</button>
+            </div>
+          )}
         </div>
 
-        {authMode === 'login' && (
-          <div style={styles.authForm}>
-            <input style={inputStyle} placeholder="Username" value={authForm.username} onChange={e => setAuthForm({ ...authForm, username: e.target.value })} />
-            <input style={inputStyle} placeholder="Password" type="password" value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} />
-            {authError && <div style={styles.errorText}>{authError}</div>}
-            <button style={{ ...styles.button, background: theme.primary, color: theme.primaryText }} onClick={handleLogin}>Login</button>
-          </div>
-        )}
+        {/* Right — logo */}
+        <div style={styles.authRight}>
+          <img src="/logo.svg" alt="Flashify" style={{ width: 280, height: 280 }} />
+        </div>
 
-        {authMode === 'register' && (
-          <div style={styles.authForm}>
-            <input style={inputStyle} placeholder="Your name" value={authForm.name} onChange={e => setAuthForm({ ...authForm, name: e.target.value })} />
-            <input style={inputStyle} placeholder="Username" value={authForm.username} onChange={e => setAuthForm({ ...authForm, username: e.target.value })} />
-            <input style={inputStyle} placeholder="Email (optional)" value={authForm.email} onChange={e => setAuthForm({ ...authForm, email: e.target.value })} />
-            <input style={inputStyle} placeholder="Password" type="password" value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} />
-            <input style={inputStyle} placeholder="Registration code" type="password" value={authForm.registrationCode} onChange={e => setAuthForm({ ...authForm, registrationCode: e.target.value })} />
-            {authError && <div style={styles.errorText}>{authError}</div>}
-            <button style={{ ...styles.button, background: theme.primary, color: theme.primaryText }} onClick={handleRegister}>Register</button>
-          </div>
-        )}
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div style={{ ...styles.container, background: theme.background, color: theme.text }}>
@@ -742,4 +758,7 @@ const styles = {
   noResults: { padding: 16, textAlign: 'center', fontSize: 14 },
   oneCol: { display: 'flex', flexDirection: 'column', gap: 16 },
 collapsibleHeader: { width: '100%', padding: '12px 16px', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: 'none' },
+authLayout: { display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 64, flexWrap: 'wrap' },
+authLeft: { display: 'flex', flexDirection: 'column', minWidth: 280 },
+authRight: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
 };
