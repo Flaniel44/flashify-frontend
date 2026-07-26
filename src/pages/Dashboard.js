@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   registerTeacher,
   loginTeacher,
@@ -76,6 +76,26 @@ export default function Dashboard() {
 
   const [studentSearch, setStudentSearch] = useState('');
 
+  const loadLastSessionDates = useCallback(async (studentList) => {
+    const dates = {};
+    await Promise.all(studentList.map(async (s) => {
+      const res = await getLastSessionDate(s.id);
+      dates[s.id] = res.data;
+    }));
+    setLastSessionDates(dates);
+  }, []);
+
+  const loadStudents = useCallback(async (teacherId) => {
+    const res = await getStudents(teacherId);
+    setStudents(res.data);
+    loadLastSessionDates(res.data);
+  }, [loadLastSessionDates]);
+
+  const loadAllWordBanks = useCallback(async (teacherId) => {
+    const res = await getWordBanksByTeacher(teacherId);
+    setAllWordBanks(res.data);
+  }, []);
+
   useEffect(() => {
     const saved = localStorage.getItem('teacher');
     if (saved) {
@@ -84,27 +104,7 @@ export default function Dashboard() {
       loadStudents(parsed.id);
       loadAllWordBanks(parsed.id);
     }
-  }, []);
-
-  const loadStudents = async (teacherId) => {
-    const res = await getStudents(teacherId);
-    setStudents(res.data);
-    loadLastSessionDates(res.data);
-  };
-
-  const loadLastSessionDates = async (studentList) => {
-    const dates = {};
-    await Promise.all(studentList.map(async (s) => {
-      const res = await getLastSessionDate(s.id);
-      dates[s.id] = res.data;
-    }));
-    setLastSessionDates(dates);
-  };
-
-  const loadAllWordBanks = async (teacherId) => {
-    const res = await getWordBanksByTeacher(teacherId);
-    setAllWordBanks(res.data);
-  };
+  }, [loadAllWordBanks, loadStudents]);
 
   const loadWordBanks = async (studentId) => {
     const res = await getWordBanks(studentId);

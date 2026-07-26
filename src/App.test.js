@@ -1,8 +1,19 @@
 import { render, screen } from '@testing-library/react';
-import App from './App';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+function ThemeName() {
+  const { themeName } = useTheme();
+  return <span>{themeName}</span>;
+}
+
+test('uses the plain theme by default', () => {
+  localStorage.removeItem('flashify_theme');
+
+  render(
+    <ThemeProvider>
+      <ThemeName />
+    </ThemeProvider>
+  );
+
+  expect(screen.getByText('plain')).toBeInTheDocument();
 });
