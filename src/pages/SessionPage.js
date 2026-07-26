@@ -29,6 +29,8 @@ export default function SessionPage() {
   );
 
   useEffect(() => {
+    let client;
+
     const init = async () => {
       try {
         const res = await joinSession(inviteToken);
@@ -43,7 +45,7 @@ export default function SessionPage() {
           return;
         }
 
-        const client = new Client({
+        client = new Client({
           webSocketFactory: () => new SockJS(`${process.env.REACT_APP_WS_URL}/ws`),
           onConnect: () => {
             setConnected(true);
@@ -66,7 +68,7 @@ export default function SessionPage() {
     init();
 
     return () => {
-      if (stompClient) stompClient.deactivate();
+      if (client) client.deactivate();
     };
   }, [inviteToken]);
 
